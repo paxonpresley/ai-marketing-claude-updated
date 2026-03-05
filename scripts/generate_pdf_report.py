@@ -342,32 +342,70 @@ def generate_report(data, output_path):
     if data.get("competitors"):
         elements.append(Paragraph("Competitive Landscape", heading_style))
 
-        comp_data = [["", data.get("brand_name", "Target")] + [c.get("name", f"Competitor {i+1}") for i, c in enumerate(data["competitors"][:3])]]
+        cell_style = ParagraphStyle(
+            "CompCell",
+            parent=styles["Normal"],
+            fontSize=8,
+            textColor=COLORS["text"],
+            fontName="Helvetica",
+            leading=11,
+            wordWrap="CJK",
+        )
+        header_cell_style = ParagraphStyle(
+            "CompHeaderCell",
+            parent=cell_style,
+            textColor=COLORS["white"],
+            fontName="Helvetica-Bold",
+        )
+        row_label_style = ParagraphStyle(
+            "CompRowLabel",
+            parent=cell_style,
+            fontName="Helvetica-Bold",
+        )
+
+        brand_info = data.get("brand", {})
+        brand_name = data.get("brand_name", "Target")
+        competitors = data["competitors"][:3]
+
+        # Header row: blank label | brand name | competitor names
+        header_row = [
+            Paragraph("", header_cell_style),
+            Paragraph(brand_name, header_cell_style),
+        ] + [Paragraph(c.get("name", f"Competitor {i+1}"), header_cell_style) for i, c in enumerate(competitors)]
+
+        comp_data = [header_row]
         comp_rows = ["Positioning", "Pricing", "Social Proof", "Content"]
 
         for row_name in comp_rows:
-            row = [row_name, data.get("brand_name", "Target")]
-            for comp in data["competitors"][:3]:
-                row.append(comp.get(row_name.lower().replace(" ", "_"), "—"))
-            # Ensure consistent columns
-            while len(row) < len(comp_data[0]):
-                row.append("—")
+            field_key = row_name.lower().replace(" ", "_")
+            brand_val = brand_info.get(field_key, "See analysis above")
+            row = [
+                Paragraph(row_name, row_label_style),
+                Paragraph(brand_val, cell_style),
+            ]
+            for comp in competitors:
+                row.append(Paragraph(comp.get(field_key, "—"), cell_style))
+            # Pad to header width if fewer than 3 competitors
+            while len(row) < len(header_row):
+                row.append(Paragraph("—", cell_style))
             comp_data.append(row)
 
-        col_count = len(comp_data[0])
-        col_width = 470 / col_count
-        comp_table = Table(comp_data, colWidths=[col_width] * col_count)
+        col_count = len(header_row)
+        label_col_width = 75
+        data_col_width = (470 - label_col_width) / (col_count - 1)
+        col_widths = [label_col_width] + [data_col_width] * (col_count - 1)
+
+        comp_table = Table(comp_data, colWidths=col_widths, repeatRows=1)
         comp_table.setStyle(TableStyle([
             ("BACKGROUND", (0, 0), (-1, 0), COLORS["primary"]),
-            ("TEXTCOLOR", (0, 0), (-1, 0), COLORS["white"]),
-            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
             ("FONTSIZE", (0, 0), (-1, -1), 8),
             ("GRID", (0, 0), (-1, -1), 0.5, COLORS["border"]),
             ("ROWBACKGROUNDS", (0, 1), (-1, -1), [COLORS["white"], COLORS["light_bg"]]),
-            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-            ("TOPPADDING", (0, 0), (-1, -1), 5),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-            ("FONTNAME", (0, 1), (0, -1), "Helvetica-Bold"),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("TOPPADDING", (0, 0), (-1, -1), 6),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+            ("LEFTPADDING", (0, 0), (-1, -1), 5),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 5),
         ]))
         elements.append(comp_table)
         elements.append(PageBreak())
